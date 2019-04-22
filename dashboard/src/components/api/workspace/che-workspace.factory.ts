@@ -20,6 +20,7 @@ import {CheBranding} from '../../branding/che-branding.factory';
 import {CheEnvironmentManager} from '../environment/che-environment-manager.factory';
 import {CheRecipeTypes} from '../recipe/che-recipe-types';
 import {CheNotification} from '../../notification/che-notification.factory';
+import { WorkspaceDataManager } from './workspace-data-manager';
 
 const WS_AGENT_HTTP_LINK: string = 'wsagent/http';
 const WS_AGENT_WS_LINK: string = 'wsagent/ws';
@@ -89,6 +90,10 @@ export class CheWorkspace {
    * Map with promises.
    */
   private workspacePromises: Map<string, ng.IHttpPromise<any>> = new Map();
+  /**
+   *  
+   */
+  private workspaceDataManager: WorkspaceDataManager;
 
   /**
    * Default constructor that is using resource
@@ -115,6 +120,7 @@ export class CheWorkspace {
     this.$websocket = $websocket;
     this.lodash = lodash;
     this.cheNotification = cheNotification;
+    this.workspaceDataManager = new WorkspaceDataManager();
 
     // current list of workspaces
     this.workspaces = [];
@@ -284,7 +290,7 @@ export class CheWorkspace {
 
   getWorkspaceByName(namespace: string, name: string): che.IWorkspace {
     return this.lodash.find(this.workspaces, (workspace: che.IWorkspace) => {
-      return workspace.namespace === namespace && workspace.config.name === name;
+      return workspace.namespace === namespace && this.workspaceDataManager.getName(workspace) === name;
     });
   }
 
@@ -775,6 +781,10 @@ export class CheWorkspace {
 
   getJsonRpcApiLocation(): string {
     return this.jsonRpcApiLocation;
+  }
+
+  getWorkspaceDataManager(): WorkspaceDataManager {
+    return this.workspaceDataManager;
   }
 
   private updateWorkspacesList(workspace: che.IWorkspace): void {

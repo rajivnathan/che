@@ -15,6 +15,7 @@ import {CheNotification} from '../../../../components/notification/che-notificat
 import {ConfirmDialogService} from '../../../../components/service/confirm-dialog/confirm-dialog.service';
 import {NamespaceSelectorSvc} from '../../create-workspace/namespace-selector/namespace-selector.service';
 import {WorkspaceDetailsService} from '../workspace-details.service';
+import {WorkspacesService} from '../../workspaces.service';
 
 const STARTING = WorkspaceStatus[WorkspaceStatus.STARTING];
 const RUNNING = WorkspaceStatus[WorkspaceStatus.RUNNING];
@@ -45,10 +46,12 @@ export class WorkspaceDetailsOverviewController {
   private workspaceDetailsService: WorkspaceDetailsService;
   private namespaceId: string;
   private workspaceName: string;
+  private name: string;
   private usedNamesList: Array<string>;
   private inputmodel: ng.INgModelController;
   private isLoading: boolean;
   private isEphemeralMode: boolean;
+  private attributes: che.IWorkspaceConfigAttributes;
   private attributesCopy: che.IWorkspaceConfigAttributes;
 
   /**
@@ -70,9 +73,12 @@ export class WorkspaceDetailsOverviewController {
     const routeParams = $route.current.params;
     this.namespaceId = routeParams.namespace;
     this.workspaceName = routeParams.workspaceName;
-
-    this.isEphemeralMode = this.workspaceDetails && this.workspaceDetails.config && this.workspaceDetails.config.attributes && this.workspaceDetails.config.attributes.persistVolumes ? !JSON.parse(this.workspaceDetails.config.attributes.persistVolumes) : false;
-    this.attributesCopy = angular.copy(this.workspaceDetails.config.attributes);
+          
+    this.attributes = this.cheWorkspace.getWorkspaceDataManager().getAttributes(this.workspaceDetails);
+    this.name = this.cheWorkspace.getWorkspaceDataManager().getName(this.workspaceDetails);
+    this.isEphemeralMode = this.attributes && this.attributes.persistVolumes ? !JSON.parse(this.attributes.persistVolumes) : false;
+    
+    this.attributesCopy = angular.copy(this.cheWorkspace.getWorkspaceDataManager().getAttributes(this.workspaceDetails));
 
     this.fillInListOfUsedNames();
   }
@@ -187,9 +193,9 @@ export class WorkspaceDetailsOverviewController {
    */
   buildInListOfUsedNames(workspaces: Array<che.IWorkspace>): Array<string> {
     return workspaces.filter((workspace: che.IWorkspace) => {
-      return workspace.namespace === this.namespaceId && workspace.config.name !== this.workspaceName;
+      return workspace.namespace === this.namespaceId && this.cheWorkspace.getWorkspaceDataManager().getName(workspace) !== this.workspaceName;
     }).map((workspace: che.IWorkspace) => {
-      return workspace.config.name;
+      return this.cheWorkspace.getWorkspaceDataManager().getName(workspace);
     });
   }
 
@@ -247,7 +253,7 @@ export class WorkspaceDetailsOverviewController {
    * Removes current workspace.
    */
   deleteWorkspace(): void {
-    const content = 'Would you like to delete workspace \'' + this.workspaceDetails.config.name + '\'?';
+    const content = 'Would you like to delete workspace \'' + this.cheWorkspace.getWorkspaceDataManager().getName(this.workspaceDetails) + '\'?';
     this.confirmDialogService.showConfirmDialog('Delete workspace', content, 'Delete').then(() => {
       if ([RUNNING, STARTING].indexOf(this.getWorkspaceStatus()) !== -1) {
         this.cheWorkspace.stopWorkspace(this.workspaceDetails.id);
@@ -267,12 +273,12 @@ export class WorkspaceDetailsOverviewController {
    */
   onEphemeralModeChange(): void {
     if (this.isEphemeralMode) {
-      this.workspaceDetails.config.attributes.persistVolumes = 'false';
+      this.attributes.persistVolumes = 'false';
     } else {
       if (this.attributesCopy.persistVolumes) {
-        this.workspaceDetails.config.attributes.persistVolumes = 'true';
+        this.attributes.persistVolumes = 'true';
       } else {
-        delete this.workspaceDetails.config.attributes.persistVolumes;
+        delete this.attributes.persistVolumes;
       }
     }
     this.onChange();
@@ -283,6 +289,7 @@ export class WorkspaceDetailsOverviewController {
    */
   onNameChange() {
     this.$timeout(() => {
+      this.cheWorkspace.getWorkspaceDataManager().setName(this.workspaceDetails, this.name);
       this.onChange();
     });
   }

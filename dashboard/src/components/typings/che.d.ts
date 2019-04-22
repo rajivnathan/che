@@ -294,7 +294,8 @@ declare namespace che {
     status?: string;
     namespace?: string;
     attributes?: IWorkspaceAttributes;
-    config: IWorkspaceConfig;
+    config?: IWorkspaceConfig;
+    devfile?: any;
     runtime?: IWorkspaceRuntime;
     isLocked?: boolean;
     usedResources?: string;
